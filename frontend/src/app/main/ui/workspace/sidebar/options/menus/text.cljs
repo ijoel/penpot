@@ -272,6 +272,9 @@
                   :values values
                   :on-change on-change
                   :show-recent true
+                  ;; TODO: Necesito comprender por qué se añadió esto para entender
+                  ;; cuál es el motivo para hacer esto. Quizá se pueda eliminar del
+                  ;; código actual.
                   :on-blur
                   (fn []
                     (ts/schedule
