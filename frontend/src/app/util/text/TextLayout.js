@@ -111,15 +111,36 @@ export class TextLayout {
     return element;
   }
 
-  $setLayoutPositionFromElement(element) {
-    // FIXME: No me gusta esta forma de convertir las coordenadas.
-    this.$x = parseFloat(element.dataset.x);
-    this.$y = parseFloat(element.dataset.y);
+  /**
+   * Sets the layout position.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {TextLayout}
+   */
+  $setLayoutPosition(x, y) {
+    this.$x = x;
+    this.$y = y;
     return this;
   }
 
   /**
-   * Sets the layout element size.
+   * Sets the layout position from the element
+   * dataset x and y attributes.
+   *
+   * @param {HTMLElement} element
+   * @returns {TextLayout}
+   */
+  $setLayoutPositionFromElement(element) {
+    return this.$setLayoutPosition(
+      parseFloat(element.dataset.x),
+      parseFloat(element.dataset.y)
+    );
+  }
+
+  /**
+   * Sets the layout element size and position
+   * based on another element.
    *
    * @param {HTMLElement} element
    * @returns {TextLayout}
@@ -129,6 +150,20 @@ export class TextLayout {
       .$setLayoutPositionFromElement(element)
       .$setLayoutRootSize(element.parentElement.clientWidth, element.parentElement.clientHeight)
       .$setLayoutSize(element.parentElement.clientWidth, element.parentElement.clientHeight);
+  }
+
+  /**
+   * Sets the layout element size and position
+   * based on the passed data.
+   *
+   * @param {LayoutFromRootOptions} options
+   * @returns {TextLayout}
+   */
+  $setLayoutFromOptions(options) {
+    return this
+      .$setLayoutPosition(options.x, options.y)
+      .$setLayoutRootSize(options.width, options.height)
+      .$setLayoutSize(options.width, options.height);
   }
 
   /**
@@ -357,6 +392,22 @@ export class TextLayout {
     // Updates layout position and size.
     this.$setLayoutFromElement(element);
     this.$layoutElement.replaceChildren(element.cloneNode(true));
+    const subelements = this.$layoutElement.querySelectorAll(
+      '[data-itype="inline"]',
+    );
+    return this.$getPositionData(subelements);
+  }
+
+  /**
+   * Performs a layout using a root and some layout
+   * options.
+   *
+   * @param {HTMLDivElement} root
+   * @param {LayoutFromRootOptions} options
+   */
+  layoutFromRoot(root, options) {
+    this.$setLayoutFromOptions(options);
+    this.$layoutElement.replaceChildren(root);
     const subelements = this.$layoutElement.querySelectorAll(
       '[data-itype="inline"]',
     );

@@ -87,11 +87,9 @@
         (mf/use-fn
          (fn []
            (let [text-editor-instance (mf/ref-val text-editor-instance-ref)
-                 new-content (content/dom->cljs (impl/getRoot text-editor-instance))
-                 new-layout (layout/layout-from-editor text-editor-instance)]
+                 new-content (content/dom->cljs (impl/getRoot text-editor-instance))]
              (when (some? new-content)
-               (st/emit! (dwt/v2-update-text-shape-content shape-id new-content true))
-               (st/emit! (dwt/v2-update-text-shape-layout shape-id new-layout))))))
+               (st/emit! (dwt/v2-update-text-shape-content shape-id new-content true))))))
 
         on-click
         (mf/use-fn

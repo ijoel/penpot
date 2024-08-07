@@ -27,10 +27,18 @@
    [app.main.fonts :as fonts]
    [app.util.router :as rt]
    [app.util.text-editor :as ted]
+   [app.util.text.layout :as layout]
    [app.util.timers :as ts]
    [beicon.v2.core :as rx]
    [cuerdas.core :as str]
    [potok.v2.core :as ptk]))
+
+;; -- V2 Editor
+
+(declare v2-update-text-shape-layout)
+(declare v2-update-text-shapes-layout)
+(declare v2-update-text-shape-content)
+(declare v2-update-text-editor-styles)
 
 ;; -- Editor
 
@@ -437,7 +445,8 @@
                     (dissoc :fills)
                     (d/update-when :content update-content)))]
 
-          (rx/of (dwsh/update-shapes shape-ids update-shape)))))))
+          (rx/concat
+           (rx/of (dwsh/update-shapes shape-ids update-shape))))))))
 
 ;; --- RESIZE UTILS
 
@@ -787,6 +796,7 @@
            (rx/of (update-attrs (:id shape)
                                 {:typography-ref-id typ-id
                                  :typography-ref-file file-id}))))))))
+
 ;; -- New Editor
 
 (defn v2-update-text-editor-styles
@@ -799,31 +809,36 @@
                                    new-styles)]
         (update-in state [:workspace-new-editor-state id] (fnil merge {}) merged-styles)))))
 
-(defn v2-update-text-shape-partial-layout
-  [id content-ids position-data]
-  (ptk/reify ::v2-update-text-shape-partial-layout
+(defn v2-update-text-shape-layout
+  [& {:keys [page-id object-id position-data]}]
+  (ptk/reify ::v2-update-text-shape-layout
     ptk/UpdateEvent
     (update [_ state]
-      (let [page-id      (:current-page-id state)]
-        (update-in state [:workspace-data :pages-index page-id :objects id]
+      (let [;; if page-id is null, then we assume that the object-id
+            ;; is from the current page.
+            page-id (if (nil? page-id)
+                      (:current-page-id state)
+                      page-id)
+             ;; if position-data is nil, then we perform the layout
+             ;; of the shape.
+            position-data (if (nil? position-data)
+                            (let [shape (get-in state [:workspace-data :pages-index page-id :objects object-id])]
+                              (layout/layout-from-shape shape))
+                            position-data)]
+        (update-in state [:workspace-data :pages-index page-id :objects object-id]
                    (fn [object]
                      (js/console.log "position-data" position-data "object" object)
                      (let [modified-object (assoc object :position-data position-data)]
                        (js/console.log "modified-object" modified-object)
                        modified-object)))))))
 
-(defn v2-update-text-shape-layout
-  [id position-data]
-  (ptk/reify ::v2-update-text-shape-layout
-    ptk/UpdateEvent
-    (update [_ state]
-      (let [page-id      (:current-page-id state)]
-        (update-in state [:workspace-data :pages-index page-id :objects id]
-                   (fn [object]
-                     (js/console.log "position-data" position-data "object" object)
-                     (let [modified-object (assoc object :position-data position-data)]
-                       (js/console.log "modified-object" modified-object)
-                       modified-object)))))))
+(defn v2-update-text-shapes-layout
+  [ids]
+  (ptk/reify ::v2-update-text-shapes-layout
+    ptk/WatchEvent
+    (watch [_ _ _]
+      (->> (rx/from (seq ids))
+           (rx/map #(v2-update-text-shape-layout %))))))
 
 (defn v2-update-text-shape-content
   ([id content]
@@ -845,8 +860,8 @@
              (let [{:keys [width height position-data]} modifiers]
                (let [new-shape (-> shape
                                    (assoc :content content)
-                                   #_(cond-> position-data
-                                       (assoc :position-data position-data))
+                                   (cond-> position-data
+                                     (assoc :position-data position-data))
                                    (cond-> (and update-name? (some? name))
                                      (assoc :name name))
                                    (cond-> (or (some? width) (some? height))

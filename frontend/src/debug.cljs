@@ -25,6 +25,7 @@
    [app.main.data.workspace.path.shortcuts]
    [app.main.data.workspace.selection :as dws]
    [app.main.data.workspace.shortcuts]
+   [app.main.data.workspace.texts :as dwt]
    [app.main.errors :as errors]
    [app.main.features :as features]
    [app.main.repo :as rp]
@@ -33,6 +34,7 @@
    [app.util.dom :as dom]
    [app.util.http :as http]
    [app.util.object :as obj]
+   [app.util.text.layout :as layout]
    [app.util.timers :as timers]
    [beicon.v2.core :as rx]
    [cljs.pprint :refer [pprint]]
@@ -514,7 +516,11 @@
                      (fn [cause]
                        (js/console.log "EE:" cause)))))))
 
-(defn ^:export debug-text-editor
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TEXT EDITOR V2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn ^:export set-text-editor
   [version]
   (cond
     (= version 1)
@@ -528,3 +534,17 @@
       (js/console.warn "Unsupported text editor version" version "using" current-version)))
 
   (js* "app.main.reinit()"))
+
+(defn ^:export text-layout
+  ([object-id]
+   (let [state @st/state
+         page-id (get state :current-page-id)]
+     (text-layout page-id object-id)))
+  ([page-id object-id]
+   (let [state @st/state
+         shape (get-in state [:workspace-data
+                              :pages-index (if (uuid? page-id) page-id (uuid/uuid page-id))
+                              :objects (uuid/uuid object-id)])]
+     (if (= (:type shape) :text)
+       (st/emit! (dwt/v2-update-text-shape-layout :object-id (uuid/uuid object-id)))
+       (js/console.log "is not a text shape")))))

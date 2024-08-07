@@ -219,9 +219,51 @@ function getInlineLength(inline) {
   return inline.firstChild.nodeValue.length;
 }
 const TAG$1 = "DIV";
-const TYPE$1 = "paragraph";
-const QUERY = `[data-itype="${TYPE$1}"]`;
-const STYLES$1 = [["text-align"], ["direction"]];
+const TYPE$1 = "root";
+const STYLES$1 = [["vertical-align"]];
+function isRoot(node) {
+  if (!node) return false;
+  if (!isElement(node, TAG$1)) return false;
+  if (node.dataset.itype !== TYPE$1) return false;
+  return true;
+}
+function createRoot(paragraphs, styles, attrs) {
+  if (!Array.isArray(paragraphs) || !paragraphs.every(isParagraph))
+    throw new TypeError("Invalid root children");
+  return createElement(TAG$1, {
+    attributes: { id: createRandomId(), ...attrs },
+    data: { itype: TYPE$1 },
+    styles,
+    allowedStyles: STYLES$1,
+    children: paragraphs
+  });
+}
+function createEmptyRoot(styles) {
+  return createRoot([createEmptyParagraph(styles)], styles);
+}
+function setRootStyles(element, styles) {
+  return setStyles(element, STYLES$1, styles);
+}
+function isTextNode(node) {
+  if (!node) throw new TypeError("Invalid text node");
+  return node.nodeType === Node.TEXT_NODE || isLineBreak(node);
+}
+function getTextNodeLength(node) {
+  if (!node) throw new TypeError("Invalid text node");
+  if (isLineBreak(node)) return 0;
+  return node.nodeValue.length;
+}
+function getClosestTextNode(node) {
+  if (isTextNode(node)) return node;
+  if (isInline(node)) return node.firstChild;
+  if (isParagraph(node)) return node.firstChild.firstChild;
+  if (isRoot(node)) return node.firstChild.firstChild.firstChild;
+  throw new Error("Cannot find a text node");
+}
+const TAG = "DIV";
+const TYPE = "paragraph";
+const QUERY = `[data-itype="${TYPE}"]`;
+const STYLES = [["text-align"], ["direction"]];
 function isLikeParagraph(element) {
   return !isLikeInline(element);
 }
@@ -233,18 +275,18 @@ function isEmptyParagraph(element) {
 }
 function isParagraph(node) {
   if (!node) return false;
-  if (!isElement(node, TAG$1)) return false;
-  if (node.dataset.itype !== TYPE$1) return false;
+  if (!isElement(node, TAG)) return false;
+  if (node.dataset.itype !== TYPE) return false;
   return true;
 }
 function createParagraph(inlines, styles, attrs) {
   if (inlines && (!Array.isArray(inlines) || !inlines.every(isInline)))
     throw new TypeError("Invalid paragraph children");
-  return createElement(TAG$1, {
+  return createElement(TAG, {
     attributes: { id: createRandomId(), ...attrs },
-    data: { itype: TYPE$1 },
+    data: { itype: TYPE },
     styles,
-    allowedStyles: STYLES$1,
+    allowedStyles: STYLES,
     children: inlines
   });
 }
@@ -253,7 +295,7 @@ function createEmptyParagraph(styles) {
 }
 function setParagraphStyles(element, styles) {
   console.log("setParagraphStyles", element, styles);
-  return setStyles(element, STYLES$1, styles);
+  return setStyles(element, STYLES, styles);
 }
 function getParagraph(node) {
   if (node.nodeType === Node.TEXT_NODE || isLineBreak(node)) {
@@ -520,7 +562,6 @@ function tryString(str) {
   if (typeof str !== "string") throw new TypeError("Invalid string");
 }
 function insertInto(str, offset, text) {
-  console.log(str, offset, text);
   tryString(str);
   tryOffset(offset);
   tryString(text);
@@ -545,48 +586,6 @@ function removeForward(str, offset) {
   tryString(str);
   tryOffset(offset);
   return str.slice(0, offset) + str.slice(offset + 1);
-}
-const TAG = "DIV";
-const TYPE = "root";
-const STYLES = [["vertical-align"]];
-function isRoot(node) {
-  if (!node) return false;
-  if (!isElement(node, TAG)) return false;
-  if (node.dataset.itype !== TYPE) return false;
-  return true;
-}
-function createRoot(paragraphs, styles, attrs) {
-  if (!Array.isArray(paragraphs) || !paragraphs.every(isParagraph))
-    throw new TypeError("Invalid root children");
-  return createElement(TAG, {
-    attributes: { id: createRandomId(), ...attrs },
-    data: { itype: TYPE },
-    styles,
-    allowedStyles: STYLES,
-    children: paragraphs
-  });
-}
-function createEmptyRoot(styles) {
-  return createRoot([createEmptyParagraph(styles)], styles);
-}
-function setRootStyles(element, styles) {
-  return setStyles(element, STYLES, styles);
-}
-function isTextNode(node) {
-  if (!node) throw new TypeError("Invalid text node");
-  return node.nodeType === Node.TEXT_NODE || isLineBreak(node);
-}
-function getTextNodeLength(node) {
-  if (!node) throw new TypeError("Invalid text node");
-  if (isLineBreak(node)) return 0;
-  return node.nodeValue.length;
-}
-function getClosestTextNode(node) {
-  if (isTextNode(node)) return node;
-  if (isInline(node)) return node.firstChild;
-  if (isParagraph(node)) return node.firstChild.firstChild;
-  if (isRoot(node)) return node.firstChild.firstChild.firstChild;
-  throw new Error("Cannot find a text node");
 }
 const TextNodeIteratorDirection = {
   FORWARD: 1,
@@ -1209,7 +1208,7 @@ class SelectionController extends EventTarget {
     if (__privateGet(this, _savedSelection)) {
       return __privateGet(this, _savedSelection).focusOffset;
     }
-    return __privateGet(this, _selection).focusOffset;
+    return __privateGet(this, _focusOffset);
   }
   /**
    * Indicates that the caret is at the start of the node.
@@ -1505,7 +1504,7 @@ class SelectionController extends EventTarget {
    * @param {string} text
    */
   replaceLineBreak(text) {
-    const newText = document.createTextNode(text);
+    const newText = new Text(text);
     this.focusInline.replaceChildren(newText);
     this.collapse(newText, text.length);
   }
@@ -1536,22 +1535,22 @@ class SelectionController extends EventTarget {
    * Removes text backward from the current caret position.
    */
   removeBackwardText() {
-    __privateGet(this, _textNodeIterator).currentNode = __privateGet(this, _focusNode);
+    __privateGet(this, _textNodeIterator).currentNode = this.focusNode;
     const removedData = removeBackward(
-      __privateGet(this, _focusNode).nodeValue,
-      __privateGet(this, _focusOffset)
+      this.focusNode.nodeValue,
+      this.focusOffset
     );
-    if (__privateGet(this, _focusNode).nodeValue !== removedData) {
-      __privateGet(this, _focusNode).nodeValue = removedData;
+    if (this.focusNode.nodeValue !== removedData) {
+      this.focusNode.nodeValue = removedData;
     }
-    if (__privateGet(this, _focusOffset) - 1 > 0) {
-      return this.collapse(__privateGet(this, _focusNode), __privateGet(this, _focusOffset) - 1);
+    if (this.focusOffset - 1 > 0) {
+      return this.collapse(this.focusNode, this.focusOffset - 1);
     }
     const paragraph = this.focusParagraph;
     const inline = this.focusInline;
     const previousTextNode = __privateGet(this, _textNodeIterator).previousNode();
-    if (__privateGet(this, _focusNode).nodeValue === "") {
-      __privateGet(this, _focusNode).remove();
+    if (this.focusNode.nodeValue === "") {
+      this.focusNode.remove();
     }
     if (paragraph.children.length === 1) {
       const lineBreak = createLineBreak();
@@ -1774,6 +1773,7 @@ class SelectionController extends EventTarget {
    * Removes the selected content.
    */
   removeSelected() {
+    debugger;
     const affectedInlines = /* @__PURE__ */ new Set();
     const affectedParagraphs = /* @__PURE__ */ new Set();
     if (__privateGet(this, _range).startContainer !== __privateGet(this, _range).endContainer) {
@@ -1809,6 +1809,10 @@ class SelectionController extends EventTarget {
       const emptyParagraph = createEmptyParagraph();
       __privateGet(this, _textEditor).root.appendChild(emptyParagraph);
       this.collapse(emptyParagraph.firstChild.firstChild, 0);
+    } else if (__privateGet(this, _textEditor).numParagraphs === 1) {
+      const singleParagraph = __privateGet(this, _textEditor).root.firstChild;
+      console.log(singleParagraph.children.length);
+      if (singleParagraph.children.length === 1) ;
     }
   }
   /**
@@ -2256,7 +2260,6 @@ class TextEditor extends EventTarget {
    * @param {*} styles
    */
   applyStylesToSelection(styles) {
-    console.log("applyStylesToSelection", styles);
     __privateGet(this, _selectionController).startMutation();
     __privateGet(this, _selectionController).applyStyles(styles);
     const mutations = __privateGet(this, _selectionController).endMutation();
