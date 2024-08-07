@@ -44,6 +44,11 @@
   [data-itype="inline"] {
     line-break: auto;
     line-height: inherit;
+
+    white-space: break-spaces;
+    text-rendering: geometricPrecision;
+    overflow-wrap: initial;
+    caret-color: rgb(0, 0, 0);
   }
 
   [data-itype="root"] {

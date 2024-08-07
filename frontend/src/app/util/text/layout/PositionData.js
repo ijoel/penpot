@@ -21,13 +21,7 @@ function createStyleMapper(styleName, styleDefault) {
     const style = window.getComputedStyle(layoutNode.node);
     const value = style.getPropertyValue(styleName);
     if (styleName.startsWith("--") && value) {
-      try {
-        return JSON.parse(value);
-      } catch (error) {
-        console.warn("Parsing style failed", error, value);
-        console.warn("Returning default style", styleDefault);
-        return styleDefault;
-      }
+      return value;
     }
     if (!value && styleDefault) {
       return styleDefault;

@@ -66,7 +66,9 @@
         (mf/use-fn
          (fn [e]
            (js/console.log (.-type e) e)
-           (st/emit! (dwt/v2-update-text-editor-styles shape-id (content/get-styles-from-event e)))))
+           (let [new-styles (content/get-styles-from-event e)]
+             (js/console.log "new-styles" (clj->js new-styles))
+             (st/emit! (dwt/v2-update-text-editor-styles shape-id new-styles)))))
 
         on-needslayout
         (mf/use-fn
@@ -80,8 +82,12 @@
                  new-layout (layout/layout-from-editor text-editor-instance layout-type layout-mutations)]
              (js/console.log "new-content" new-content "new-layout" new-layout)
              (when (some? new-content)
+               ;; FIXME: Maybe we can make a new event that does both things
+               ;;        (updating content and layout) without calling `update-shapes`.
                (st/emit! (dwt/v2-update-text-shape-content shape-id new-content false))
-               (st/emit! (dwt/v2-update-text-shape-layout shape-id new-layout))))))
+               ;; FIXME: The problem of not using layout to do layout when it's needed
+               ;;        is that we loose the partial layout.
+               #_(st/emit! (dwt/v2-update-text-shape-layout shape-id new-layout))))))
 
         on-change
         (mf/use-fn

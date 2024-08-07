@@ -28,6 +28,7 @@
    [app.util.router :as rt]
    [app.util.text-editor :as ted]
    [app.util.text.layout :as layout]
+   [app.util.text.content.styles :as styles]
    [app.util.timers :as ts]
    [beicon.v2.core :as rx]
    [cuerdas.core :as str]
@@ -36,7 +37,6 @@
 ;; -- V2 Editor
 
 (declare v2-update-text-shape-layout)
-(declare v2-update-text-shapes-layout)
 (declare v2-update-text-shape-content)
 (declare v2-update-text-editor-styles)
 
@@ -342,7 +342,10 @@
     (ptk/reify ::update-paragraph-attrs
       ptk/UpdateEvent
       (update [_ state]
-        (d/update-in-when state [:workspace-editor-state id] ted/update-editor-current-block-data attrs))
+        ;; FIXME: I don't like this way of doing this operation.
+        (if (some? (get-in state [:workspace-new-editor-state id]))
+          state
+          (d/update-in-when state [:workspace-editor-state id] ted/update-editor-current-block-data attrs)))
 
       ptk/WatchEvent
       (watch [_ state _]
@@ -361,7 +364,15 @@
                             (cfh/text-shape? shape)  [id]
                             (cfh/group-shape? shape) (cfh/get-children-ids objects id))]
 
-            (rx/of (dwsh/update-shapes shape-ids update-fn))))))))
+            (rx/of (dwsh/update-shapes shape-ids update-fn)))))
+
+      ptk/EffectEvent
+      (effect [_ state _]
+              (when (and (some? (get-in state [:workspace-new-editor-state id]))
+                         (some? (get state :workspace-editor)))
+                (let [text-editor-instance ^js/Object (get state :workspace-editor)]
+                  (.applyStylesToSelection text-editor-instance (styles/map-styles attrs))
+                  state))))))
 
 (defn update-text-attrs
   [{:keys [id attrs]}]
@@ -371,12 +382,13 @@
       (js/console.log "effect-event::update-text-attrs")
       (let [text-editor-instance ^js/Object (get state :workspace-editor)]
         (when (some? text-editor-instance)
-          (.applyStylesToSelection text-editor-instance (clj->js attrs)))))
+          (.applyStylesToSelection text-editor-instance (styles/map-styles attrs)))))
 
     ptk/WatchEvent
     (watch [_ state _]
-      (js/console.log "effect-event::update-text-attrs")
+      (js/console.log "watch-event::update-text-attrs")
       (let [text-editor-instance ^js/Object (get state :workspace-editor)]
+        (js/console.log "text-editor-instance" text-editor-instance)
         (when-not (some? text-editor-instance)
           (let [objects   (wsh/lookup-page-objects state)
                 shape     (get objects id)
@@ -502,7 +514,8 @@
                    (dwsh/update-shapes ids update-fn {:reg-objects? true
                                                       :stack-undo? true
                                                       :ignore-touched true})
-                   (ptk/data-event :layout/update {:ids ids})
+                   ;; TODO: Why is this here if dwsh/update-shapes calls this internally?
+                   #_(ptk/data-event :layout/update {:ids ids})
                    (dwu/commit-undo-transaction undo-id))))))))
 
 (defn resize-text
@@ -727,6 +740,7 @@
    (ptk/reify ::apply-typography
      ptk/WatchEvent
      (watch [_ state _]
+       (js/console.log "apply-typography")
        (let [editor-state (:workspace-editor-state state)
              ids          (d/nilv ids (wsh/lookup-selected state))
              attrs        (-> typography
@@ -831,14 +845,6 @@
                      (let [modified-object (assoc object :position-data position-data)]
                        (js/console.log "modified-object" modified-object)
                        modified-object)))))))
-
-(defn v2-update-text-shapes-layout
-  [ids]
-  (ptk/reify ::v2-update-text-shapes-layout
-    ptk/WatchEvent
-    (watch [_ _ _]
-      (->> (rx/from (seq ids))
-           (rx/map #(v2-update-text-shape-layout %))))))
 
 (defn v2-update-text-shape-content
   ([id content]

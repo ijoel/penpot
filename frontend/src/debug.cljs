@@ -34,7 +34,6 @@
    [app.util.dom :as dom]
    [app.util.http :as http]
    [app.util.object :as obj]
-   [app.util.text.layout :as layout]
    [app.util.timers :as timers]
    [beicon.v2.core :as rx]
    [cljs.pprint :refer [pprint]]
