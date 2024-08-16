@@ -906,7 +906,7 @@
   [:map {:title "create-team-invitations"}
    [:team-id ::sm/uuid]
    [:role schema:role]
-   [:emails ::sm/set-of-emails]])
+   [:emails [::sm/set ::sm/email]]])
 
 (sv/defmethod ::create-team-invitations
   "A rpc call that allow to send a single or multiple invitations to
@@ -972,7 +972,7 @@
    [:name [:string {:max 250}]]
    [:features {:optional true} ::cfeat/features]
    [:id {:optional true} ::sm/uuid]
-   [:emails ::sm/set-of-emails]
+   [:emails [::sm/set ::sm/email]]
    [:role schema:role]])
 
 (sv/defmethod ::create-team-with-invitations

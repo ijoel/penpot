@@ -44,7 +44,7 @@
   [:map {:title "update-file"}
    [:id ::sm/uuid]
    [:session-id ::sm/uuid]
-   [:revn {:min 0} :int]
+   [:revn {:min 0} ::sm/int]
    [:features {:optional true} ::cfeat/features]
    [:changes {:optional true} [:vector ::cpc/change]]
    [:changes-with-metadata {:optional true}
@@ -61,7 +61,7 @@
     [:changes [:vector ::cpc/change]]
     [:file-id ::sm/uuid]
     [:id ::sm/uuid]
-    [:revn {:min 0} :int]
+    [:revn {:min 0} ::sm/int]
     [:session-id ::sm/uuid]]])
 
 ;; --- HELPERS

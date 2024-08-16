@@ -122,6 +122,8 @@
                           (c/map second))
                          (c/map list bools elements)))))))
 
+(def any tg/any)
+
 (defn set
   [g]
   (tg/set g))

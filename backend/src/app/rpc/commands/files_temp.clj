@@ -83,7 +83,7 @@
 (def ^:private schema:update-temp-file
   [:map {:title "update-temp-file"}
    [:changes [:vector ::cpc/change]]
-   [:revn {:min 0} :int]
+   [:revn [::sm/int {:min 0}]]
    [:session-id ::sm/uuid]
    [:id ::sm/uuid]])
 
